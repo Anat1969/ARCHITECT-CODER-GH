@@ -1602,19 +1602,28 @@ async function saveContent() {
     updates.push({ id: el.id, html: el.innerHTML });
   });
   if (!updates.length) return;
+  /* עדכון זיכרון מיידי */
+  if (!window._savedContent) window._savedContent = {};
+  updates.forEach(u => { window._savedContent[u.id] = u.html; });
   /* שמירה ב-Supabase */
-  await sb.from('content').upsert(updates);
-  /* fallback ל-localStorage */
-  const map = {};
-  updates.forEach(u => { map[u.id] = u.html; });
-  localStorage.setItem('uai_content', JSON.stringify(map));
+  const { error } = await sb.from('content').upsert(updates);
+  if (error) { console.error('Supabase save error:', error); showToast('שגיאה בשמירה ✕'); return; }
+  /* fallback ל-localStorage — merge */
+  const existing = JSON.parse(localStorage.getItem('uai_content') || '{}');
+  updates.forEach(u => { existing[u.id] = u.html; });
+  localStorage.setItem('uai_content', JSON.stringify(existing));
+  showToast('נשמר ✓');
 }
 
 async function loadContent() {
   const { data, error } = await sb.from('content').select('*');
-  if (data && data.length) {
+  if (!error && data && data.length) {
     window._savedContent = {};
     data.forEach(row => { window._savedContent[row.id] = row.html; });
+    /* sync ל-localStorage */
+    const map = {};
+    data.forEach(row => { map[row.id] = row.html; });
+    localStorage.setItem('uai_content', JSON.stringify(map));
   } else {
     window._savedContent = JSON.parse(localStorage.getItem('uai_content') || '{}');
   }

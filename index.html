@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban AI Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;600;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bx: #630d16;
+  --bx2: #8e1a25;
+  --bx-pale: rgba(99,13,22,0.07);
+  --bx-mid: rgba(99,13,22,0.15);
+  --paper: #fcfcf9;
+  --white: #ffffff;
+  --border: #e8e8e8;
+  --text: #1a1a1a;
+  --muted: #888;
+  --step-blue: #1d4ed8;
+  --step-blue-pale: rgba(29,78,216,0.07);
+  --green: #16a34a;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html { font-size:18px; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family:'Assistant',sans-serif;
+  background:var(--paper);
+  color:var(--text);
+  display:flex;
+  height:100vh;
+}
+
+/* ═══════════════════════════════
+   חלק 1 — סרגל ניווט אנכי
+═══════════════════════════════ */
+#nav-bar {
+  width:220px;
+  flex-shrink:0;
+  height:100vh;
+  background:var(--white);
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  box-shadow:-2px 0 12px rgba(0,0,0,0.04);
+  z-index:20;
+}
+
+.nav-logo {
+  padding:1.8rem 1.4rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.nav-logo-eyebrow {
+  font-size:0.52rem;
+  text-transform:uppercase;
+  letter-spacing:8px;
+  color:#ccc;
+  font-weight:700;
+  display:block;
+  margin-bottom:5px;
+}
+.nav-logo-title {
+  font-family:'Playfair Display',serif;
+  font-size:1.3rem;
+  font-weight:900;
+  color:var(--bx);
+  line-height:1.2;
+}
+
+.nav-section-label {
+  font-size:0.52rem;
+  text-transform:uppercase;
+  letter-spacing:5px;
+  color:#ccc;
+  font-weight:700;
+  padding:1.2rem 1.4rem 0.5rem;
+  display:block;
+}
+
+.nav-chapters {
+  flex:1;
+  overflow-y:auto;
+  padding-bottom:0.5rem;
+}
+
+/* כפתור פרק בסרגל */
+.nav-ch-btn {
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0.75rem 1.4rem;
+  background:none;
+  border:none;
+  border-right:3px solid transparent;
+  cursor:pointer;
+  font-family:'Assistant',sans-serif;
+  font-size:0.82rem;
+  font-weight:600;
+  color:#666;
+  text-align:right;
+  transition:all 0.2s;
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+}
+.nav-ch-btn .ch-num {
+  font-family:monospace;
+  font-size:0.62rem;
+  opacity:0.4;
+  min-width:22px;
+}
+.nav-ch-btn:hover { color:var(--bx); background:var(--bx-pale); }
+.nav-ch-btn.active {
+  color:var(--bx);
+  background:var(--bx-pale);
+  border-right-color:var(--bx);
+  font-weight:800;
+}
+
+.nav-divider { height:1px; background:var(--border); margin:0.5rem 1rem; }
+
+/* כלי סטודיו */
+.nav-tools {
+  padding:1rem 1.2rem;
+  border-top:1px solid var(--border);
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  flex-shrink:0;
+}
+.tool-btn {
+  background:none;
+  border:1px solid var(--border);
+  border-radius:6px;
+  width:36px;
+  height:36px;
+  cursor:pointer;
+  font-size:0.95rem;
+  transition:all 0.18s;
+  color:#999;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.tool-btn:hover { border-color:var(--bx); color:var(--bx); background:var(--bx-pale); }
+.tool-btn.active { background:var(--bx); color:#fff; border-color:var(--bx); }
+.tool-tip {
+  position:absolute;
+  bottom:calc(100% + 6px);
+  right:50%;
+  transform:translateX(50%);
+  background:#111;
+  color:#fff;
+  font-size:0.65rem;
+  white-space:nowrap;
+  padding:3px 8px;
+  border-radius:3px;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 0.15s;
+  font-family:'Assistant',sans-serif;
+  letter-spacing:1px;
+}
+.tool-btn:hover .tool-tip { opacity:1; }
+
+/* ═══════════════════════════════
+   חלק 2 — חלון הקשר ורקע
+═══════════════════════════════ */
+#ctx-pane {
+  width:380px;
+  flex-shrink:0;
+  height:100vh;
+  background:var(--white);
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.pane-header {
+  padding:1rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:48px;
+}
+.pane-header-label {
+  font-size:0.55rem;
+  text-transform:uppercase;
+  letter-spacing:6px;
+  color:#ccc;
+  font-weight:700;
+}
+.pane-header-chapter {
+  font-size:0.75rem;
+  font-weight:800;
+  color:var(--bx);
+  text-transform:uppercase;
+  letter-spacing:2px;
+}
+
+.ctx-body {
+  flex:1;
+  overflow-y:auto;
+  padding:1.5rem;
+}
+
+/* מידע הקשר בראש */
+.ctx-chapter-num {
+  font-family:'Playfair Display',serif;
+  font-size:5rem;
+  font-weight:900;
+  color:var(--bx);
+  opacity:0.06;
+  line-height:1;
+  user-select:none;
+  margin-bottom:-0.5rem;
+}
+.ctx-title {
+  font-family:'Playfair Display',serif;
+  font-size:1.8rem;
+  font-weight:900;
+  color:#111;
+  line-height:1.2;
+  margin-bottom:0.7rem;
+}
+.ctx-desc {
+  font-size:0.9rem;
+  font-weight:300;
+  line-height:1.7;
+  color:#555;
+  margin-bottom:1.2rem;
+}
+.ctx-divider {
+  height:1px;
+  background:var(--border);
+  margin:1.2rem 0;
+}
+.ctx-section-label {
+  font-size:0.55rem;
+  text-transform:uppercase;
+  letter-spacing:5px;
+  color:#bbb;
+  font-weight:700;
+  display:block;
+  margin-bottom:0.6rem;
+}
+
+/* כפתורי ניווט בחלון הקשר */
+.ctx-btn-list {
+  display:flex;
+  flex-direction:column;
+  gap:0.5rem;
+}
+
+.ctx-btn {
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0.75rem 1rem;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:5px;
+  cursor:pointer;
+  font-family:'Assistant',sans-serif;
+  font-size:0.85rem;
+  font-weight:600;
+  color:#444;
+  text-align:right;
+  transition:all 0.2s;
+  position:relative;
+}
+.ctx-btn .btn-num {
+  font-family:monospace;
+  font-size:0.62rem;
+  color:#bbb;
+  min-width:20px;
+}
+.ctx-btn .btn-label { flex:1; }
+.ctx-btn .btn-dot {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:transparent;
+  border:1.5px solid #ddd;
+  flex-shrink:0;
+  transition:all 0.2s;
+}
+
+/* מצב active (נלחץ) */
+.ctx-btn:hover { border-color:rgba(99,13,22,0.25); background:var(--bx-pale); color:var(--bx); }
+.ctx-btn:hover .btn-dot { border-color:var(--bx); }
+
+.ctx-btn.active {
+  background:var(--bx-pale);
+  border-color:var(--bx);
+  color:var(--bx);
+  font-weight:800;
+}
+.ctx-btn.active .btn-dot {
+  background:var(--bx);
+  border-color:var(--bx);
+}
+.ctx-btn.active .btn-num { color:var(--bx); opacity:0.6; }
+
+/* וריאציות צבע לפי סוג */
+.ctx-btn.type-step { border-right:3px solid var(--step-blue); }
+.ctx-btn.type-step:hover, .ctx-btn.type-step.active { background:var(--step-blue-pale); border-color:var(--step-blue); color:var(--step-blue); }
+.ctx-btn.type-step.active .btn-dot { background:var(--step-blue); border-color:var(--step-blue); }
+
+.ctx-btn.type-parcel { border-right:3px solid #64748b; }
+.ctx-btn.type-exercise { border-right:3px dashed #d97706; }
+.ctx-btn.type-exercise:hover, .ctx-btn.type-exercise.active { background:#fffbf0; border-color:#d97706; color:#d97706; }
+
+/* ═══════════════════════════════
+   חלק 3 — חלון פעולות וכלים
+═══════════════════════════════ */
+#act-pane {
+  flex:1;
+  height:100vh;
+  background:var(--paper);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.act-body {
+  flex:1;
+  overflow-y:auto;
+  padding:1.5rem 2rem 3rem;
+}
+
+/* מצב ריק (לפני בחירה) */
+.act-empty {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  color:#ccc;
+  text-align:center;
+  gap:0.8rem;
+  padding:2rem;
+}
+.act-empty-arrow {
+  font-size:2rem;
+  opacity:0.3;
+}
+.act-empty-text {
+  font-size:0.85rem;
+  font-weight:300;
+  line-height:1.6;
+}
+
+/* בלוקים בחלון הפעולות */
+.act-block {
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:5px;
+  margin-bottom:1rem;
+  overflow:hidden;
+}
+
+.act-block-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0.55rem 1rem;
+  border-bottom:1px solid var(--border);
+  background:#fafafa;
+}
+.act-type-tag {
+  font-size:0.56rem;
+  text-transform:uppercase;
+  letter-spacing:5px;
+  font-weight:800;
+  color:#bbb;
+}
+.act-type-tag.פרומפט { color:var(--bx); }
+.act-type-tag.שלב { color:var(--step-blue); }
+.act-type-tag.תרגיל { color:#d97706; }
+.act-type-tag.דוגמה { color:var(--green); }
+
+.act-copy-btn {
+  background:none;
+  border:1px solid var(--border);
+  border-radius:3px;
+  padding:3px 10px;
+  font-size:0.65rem;
+  font-weight:700;
+  cursor:pointer;
+  font-family:'Assistant',sans-serif;
+  letter-spacing:1px;
+  color:#999;
+  transition:all 0.15s;
+}
+.act-copy-btn:hover { background:var(--bx); color:#fff; border-color:var(--bx); }
+.act-copy-btn.הועתק { background:var(--green); color:#fff; border-color:var(--green); }
+
+.act-block-body { padding:1rem 1.2rem; }
+
+.act-block.פרומפט { border-right:4px solid var(--bx); }
+.act-block.שלב { border-right:4px solid var(--step-blue); }
+.act-block.תרגיל { border-right:4px dashed #d97706; background:#fffcf5; }
+.act-block.דוגמה { border-right:4px solid var(--green); }
+
+.act-title {
+  font-size:0.85rem;
+  font-weight:800;
+  color:#222;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:0.6rem;
+}
+.act-subtitle {
+  font-size:0.82rem;
+  font-weight:300;
+  color:#666;
+  line-height:1.6;
+  margin-bottom:0.8rem;
+}
+.act-dialog {
+  font-size:0.8rem;
+  font-style:italic;
+  color:#888;
+  line-height:1.55;
+  border-right:2px solid #ddd;
+  padding-right:0.7rem;
+  margin-bottom:0.8rem;
+}
+.act-dialog strong { font-style:normal; color:#555; }
+.act-prompt {
+  font-size:0.85rem;
+  color:#111;
+  line-height:1.7;
+  background:#f8f8f6;
+  padding:0.9rem 1rem;
+  border-radius:3px;
+  font-family:monospace;
+  white-space:pre-wrap;
+  border:1px solid #eee;
+}
+.act-exercise-text {
+  font-size:0.92rem;
+  font-weight:300;
+  color:#444;
+  line-height:1.75;
+}
+
+/* טבלת זכויות */
+.rights-table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:0.82rem;
+  border-radius:4px;
+  overflow:hidden;
+  margin-top:0.5rem;
+}
+.rights-table th {
+  background:#222;
+  color:#fff;
+  padding:0.55rem 0.8rem;
+  text-align:right;
+  font-weight:700;
+  font-size:0.7rem;
+  letter-spacing:1px;
+}
+.rights-table td {
+  padding:0.6rem 0.8rem;
+  border-bottom:1px solid #f0f0f0;
+}
+.rights-table tr:last-child td { border-bottom:none; }
+.rights-table tr:hover td { background:var(--bx-pale); }
+.rights-table .hl { color:var(--bx); font-weight:700; }
+.parcel-note {
+  margin-top:0.8rem;
+  font-size:0.82rem;
+  font-weight:300;
+  color:#555;
+  line-height:1.6;
+  border-right:3px solid var(--bx);
+  padding-right:0.8rem;
+}
+
+/* Checklist */
+.cl-cat {
+  font-size:0.58rem;
+  text-transform:uppercase;
+  letter-spacing:5px;
+  color:var(--bx);
+  font-weight:700;
+  margin:1.2rem 0 0.5rem;
+  display:block;
+}
+.cl-item {
+  display:flex;
+  align-items:center;
+  gap:0.6rem;
+  padding:0.6rem 0.8rem;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:4px;
+  margin-bottom:0.35rem;
+  font-size:0.84rem;
+  cursor:pointer;
+  transition:all 0.18s;
+}
+.cl-item:hover { border-color:rgba(99,13,22,0.2); }
+.cl-dot {
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  border:2px solid #ddd;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0.8rem;
+  flex-shrink:0;
+  transition:all 0.18s;
+}
+.cl-item.בוצע .cl-dot { background:var(--green); border-color:var(--green); color:#fff; }
+.cl-item.בטיפול .cl-dot { background:#f59e0b; border-color:#f59e0b; color:#fff; }
+.cl-item.חסר .cl-dot { background:var(--bx); border-color:var(--bx); color:#fff; }
+.cl-dept { font-size:0.62rem; color:#ccc; text-transform:uppercase; letter-spacing:2px; margin-right:auto; }
+.cl-stats {
+  display:flex;
+  gap:1.2rem;
+  margin-top:1rem;
+  padding:0.7rem 1rem;
+  background:#f9f9f7;
+  border-radius:4px;
+}
+.cl-stat { text-align:center; }
+.cl-stat .n { font-size:1.3rem; font-weight:900; }
+.cl-stat .l { font-size:0.55rem; text-transform:uppercase; letter-spacing:2px; color:#bbb; }
+
+/* כרטיסי מטה (פרק 00) */
+.meta-cards {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0.7rem;
+}
+.meta-card {
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:0.8rem 1rem;
+}
+.meta-card .ml {
+  font-size:0.55rem;
+  text-transform:uppercase;
+  letter-spacing:4px;
+  color:#bbb;
+  font-weight:700;
+  display:block;
+  margin-bottom:4px;
+}
+.meta-card .mv {
+  font-size:1rem;
+  font-weight:800;
+  color:#111;
+}
+
+/* improve cards */
+.improve-cards {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0.7rem;
+}
+.improve-card { padding:0.7rem 0.9rem; background:var(--white); border:1px solid var(--border); border-radius:4px; }
+.improve-card .ic-tag { font-size:0.6rem; text-transform:uppercase; letter-spacing:3px; font-weight:700; color:var(--bx); margin-bottom:3px; display:block; }
+.improve-card p { font-size:0.8rem; color:#555; line-height:1.5; font-weight:300; }
+
+/* ═══════════════════════════════
+   פאנלים (הערות / קישורים)
+═══════════════════════════════ */
+.overlay-bg {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.25);
+  z-index:500;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.overlay-bg.open { display:flex; }
+.overlay-box {
+  background:#fff;
+  border-radius:6px;
+  width:440px;
+  max-width:95vw;
+  max-height:80vh;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 25px 70px rgba(0,0,0,0.15);
+}
+.overlay-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:1rem 1.3rem;
+  border-bottom:1px solid var(--border);
+}
+.overlay-head h3 { font-size:0.95rem; font-weight:800; color:#111; }
+.overlay-close { background:none; border:none; font-size:1.2rem; cursor:pointer; color:#aaa; }
+.overlay-body { flex:1; overflow-y:auto; padding:1rem 1.3rem; }
+.overlay-footer { padding:1rem 1.3rem; border-top:1px solid var(--border); }
+.overlay-footer textarea {
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:0.6rem;
+  font-family:'Assistant',sans-serif;
+  font-size:0.85rem;
+  resize:vertical;
+  outline:none;
+}
+.overlay-footer textarea:focus { border-color:var(--bx); }
+.overlay-save {
+  width:100%;
+  margin-top:0.5rem;
+  background:var(--bx);
+  color:#fff;
+  border:none;
+  padding:0.6rem;
+  font-family:'Assistant',sans-serif;
+  font-weight:700;
+  font-size:0.78rem;
+  cursor:pointer;
+  border-radius:4px;
+  text-transform:uppercase;
+  letter-spacing:2px;
+}
+.overlay-save:hover { background:var(--bx2); }
+.note-card {
+  background:var(--bx-pale);
+  border-right:3px solid var(--bx);
+  padding:0.65rem 0.8rem;
+  margin-bottom:0.5rem;
+  border-radius:0 3px 3px 0;
+  font-size:0.82rem;
+  line-height:1.5;
+}
+.note-meta { font-size:0.58rem; color:#bbb; text-transform:uppercase; letter-spacing:2px; margin-bottom:3px; }
+.link-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:0.8rem;
+  background:#f9f9f7;
+  padding:0.45rem 0.7rem;
+  border-radius:3px;
+  margin-bottom:0.35rem;
+}
+.link-row a { color:#333; font-weight:600; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:none; }
+.link-row a:hover { color:var(--bx); }
+.link-del { background:none; border:none; color:var(--bx); cursor:pointer; font-weight:900; }
+
+/* Toast */
+#toast {
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%) translateY(8px);
+  background:#111;
+  color:#fff;
+  padding:0.55rem 1.5rem;
+  border-radius:30px;
+  font-size:0.75rem;
+  font-weight:700;
+  z-index:9999;
+  opacity:0;
+  transition:all 0.3s;
+  pointer-events:none;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ═══ Formatting Toolbar ═══ */
+#fmt-toolbar {
+  position:fixed;
+  z-index:9100;
+  background:#1c1c1c;
+  border-radius:8px;
+  padding:5px 7px;
+  display:none;
+  gap:3px;
+  align-items:center;
+  box-shadow:0 6px 28px rgba(0,0,0,0.28);
+  pointer-events:auto;
+}
+#fmt-toolbar.show { display:flex; }
+.fmt-btn {
+  background:none;
+  border:none;
+  color:#eee;
+  cursor:pointer;
+  width:30px;
+  height:28px;
+  border-radius:5px;
+  font-family:'Assistant',sans-serif;
+  font-size:0.85rem;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background 0.15s;
+  flex-shrink:0;
+}
+.fmt-btn:hover { background:rgba(255,255,255,0.14); }
+.fmt-sep { width:1px; height:16px; background:rgba(255,255,255,0.18); margin:0 3px; flex-shrink:0; }
+#fmt-color-pick {
+  width:22px; height:22px;
+  border-radius:50%;
+  border:1.5px solid rgba(255,255,255,0.3);
+  cursor:pointer;
+  padding:0;
+  background:none;
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+/* ═══ Resize Handles ═══ */
+.resize-handle {
+  width:5px;
+  flex-shrink:0;
+  cursor:col-resize;
+  background:transparent;
+  position:relative;
+  z-index:50;
+  transition:background 0.2s;
+}
+.resize-handle:hover { background:var(--bx-mid); }
+.resize-handle.dragging { background:var(--bx-mid); }
+.resize-handle::after {
+  content:'';
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:2px;
+  height:32px;
+  border-radius:2px;
+  background:var(--border);
+  transition:background 0.2s;
+}
+.resize-handle:hover::after, .resize-handle.dragging::after { background:var(--bx); }
+
+/* Canvas */
+#drawing-canvas {
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  z-index:300;
+  pointer-events:none;
+  cursor:crosshair;
+}
+#drawing-canvas.active { pointer-events:auto; }
+
+/* עריכה */
+[contenteditable].edit-on {
+  outline:2px dashed var(--bx-mid);
+  padding:4px;
+  background:rgba(99,13,22,0.015);
+  border-radius:2px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="drawing-canvas"></canvas>
+<div id="toast"></div>
+
+<!-- ═══ Formatting Toolbar ═══ -->
+<div id="fmt-toolbar">
+  <button class="fmt-btn" id="fmt-bold"   title="הבלטה — Ctrl+B"><b>B</b></button>
+  <button class="fmt-btn" id="fmt-italic" title="נטייה — Ctrl+I"><i style="font-family:serif;">I</i></button>
+  <div class="fmt-sep"></div>
+  <button class="fmt-btn" onclick="fmtSize(1)"  title="הגדל טקסט" style="font-size:0.7rem;letter-spacing:-1px;">A+</button>
+  <button class="fmt-btn" onclick="fmtSize(-1)" title="הקטן טקסט" style="font-size:0.7rem;letter-spacing:-1px;">A−</button>
+  <div class="fmt-sep"></div>
+  <input type="color" id="fmt-color-pick" value="#630d16" title="צבע טקסט">
+  <div class="fmt-sep"></div>
+  <button class="fmt-btn" onclick="fmt('removeFormat')" title="נקה עיצוב" style="font-size:0.75rem;opacity:0.7;">✕</button>
+</div>
+
+<!-- ═══ פאנל הערות ═══ -->
+<div class="overlay-bg" id="notes-overlay" onclick="closePnl('notes-overlay')">
+  <div class="overlay-box" onclick="event.stopPropagation()">
+    <div class="overlay-head">
+      <h3>הערות אישיות</h3>
+      <div style="display:flex;gap:6px;">
+        <button onclick="exportNotes()" style="font-size:0.7rem;background:#f0f0f0;border:none;padding:3px 10px;border-radius:3px;cursor:pointer;font-family:'Assistant',sans-serif;font-weight:700;">ייצוא</button>
+        <button class="overlay-close" onclick="closePnl('notes-overlay')">✕</button>
+      </div>
+    </div>
+    <div class="overlay-body" id="notes-list"></div>
+    <div class="overlay-footer">
+      <div id="note-ctx-label" style="font-size:0.58rem;color:#bbb;text-transform:uppercase;letter-spacing:3px;margin-bottom:5px;">הקשר נוכחי</div>
+      <textarea id="note-input" rows="3" placeholder="כתוב הערה..."></textarea>
+      <button class="overlay-save" onclick="saveNote()">שמור הערה</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ פאנל קישורים ═══ -->
+<div class="overlay-bg" id="links-overlay" onclick="closePnl('links-overlay')">
+  <div class="overlay-box" onclick="event.stopPropagation()">
+    <div class="overlay-head">
+      <h3>ארכיון קישורים</h3>
+      <button class="overlay-close" onclick="closePnl('links-overlay')">✕</button>
+    </div>
+    <div class="overlay-body" id="links-list"></div>
+    <div class="overlay-footer">
+      <textarea id="link-input" rows="1" placeholder="הדבק URL לשמירה..."></textarea>
+      <button class="overlay-save" onclick="saveLink()">שמור קישור</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     חלק 1 — סרגל ניווט אנכי
+═══════════════════════════════════════════════════ -->
+<aside id="nav-bar">
+  <div class="nav-logo">
+    <span class="nav-logo-eyebrow">Urban AI Lab</span>
+    <div class="nav-logo-title">The Architect<br>Coder</div>
+  </div>
+
+  <div class="nav-chapters">
+    <span class="nav-section-label">תהליך הלמידה</span>
+    <button class="nav-ch-btn" data-ch="00" onclick="openChapter('00')">
+      <span class="ch-num">00</span>פתיחה
+    </button>
+    <button class="nav-ch-btn" data-ch="01" onclick="openChapter('01')">
+      <span class="ch-num">01</span>זיקוק הנחיות
+    </button>
+    <button class="nav-ch-btn" data-ch="02" onclick="openChapter('02')">
+      <span class="ch-num">02</span>ניתוח ואפיון
+    </button>
+    <button class="nav-ch-btn" data-ch="03" onclick="openChapter('03')">
+      <span class="ch-num">03</span>בנייה וקידוד
+    </button>
+    <div class="nav-divider"></div>
+    <span class="nav-section-label">דוגמאות</span>
+    <button class="nav-ch-btn" data-ch="ma" onclick="openChapter('ma')">
+      <span class="ch-num">מ׳א</span>זכויות בנייה
+    </button>
+    <button class="nav-ch-btn" data-ch="mb" onclick="openChapter('mb')">
+      <span class="ch-num">מ׳ב</span>דרישות עירייה
+    </button>
+  </div>
+
+  <div style="padding:0.6rem 1rem 0.4rem;">
+    <button id="save-btn" onclick="saveAll()" style="
+      width:100%;
+      background:var(--bx);
+      color:#fff;
+      border:none;
+      border-radius:5px;
+      padding:0.55rem 0;
+      font-family:'Assistant',sans-serif;
+      font-size:0.72rem;
+      font-weight:800;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      transition:background 0.18s, transform 0.1s;
+    ">
+      <span id="save-icon">💾</span>
+      <span id="save-label">שמור</span>
+    </button>
+  </div>
+  <div class="nav-tools">
+    <button class="tool-btn" id="btn-edit" onclick="toggleEdit()">
+      ✎<span class="tool-tip">עריכת תוכן</span>
+    </button>
+    <button class="tool-btn" id="btn-draw" onclick="toggleDraw()">
+      ✏<span class="tool-tip">שרטוט</span>
+    </button>
+    <button class="tool-btn" onclick="clearCanvas()">
+      ⊘<span class="tool-tip">נקה שרטוט</span>
+    </button>
+    <button class="tool-btn" onclick="openNotes()">
+      📝<span class="tool-tip">הערות</span>
+    </button>
+    <button class="tool-btn" onclick="openLinks()">
+      🔗<span class="tool-tip">קישורים</span>
+    </button>
+  </div>
+</aside>
+<div class="resize-handle" id="rh-1"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     חלק 2 — חלון הקשר ורקע
+═══════════════════════════════════════════════════ -->
+<div id="ctx-pane">
+  <div class="pane-header">
+    <span class="pane-header-label">הקשר ורקע</span>
+    <span class="pane-header-chapter" id="ctx-chapter-label">—</span>
+  </div>
+  <div class="ctx-body" id="ctx-body">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60%;color:#ddd;text-align:center;gap:0.8rem;">
+      <div style="font-size:2rem;">←</div>
+      <div style="font-size:0.82rem;font-weight:300;line-height:1.6;">
+        בחר פרק<br>מהסרגל הימני
+      </div>
+    </div>
+  </div>
+</div>
+<div class="resize-handle" id="rh-2"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     חלק 3 — חלון פעולות וכלים
+═══════════════════════════════════════════════════ -->
+<div id="act-pane">
+  <div class="pane-header">
+    <span class="pane-header-label">פעולות וכלים</span>
+    <span class="pane-header-chapter" id="act-section-label">—</span>
+  </div>
+  <div class="act-body" id="act-body">
+    <div class="act-empty">
+      <div class="act-empty-arrow">←</div>
+      <div class="act-empty-text">
+        בחר נושא<br>מחלון ההקשר
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SCRIPT
+═══════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ══════════ Supabase ══════════ */
+const { createClient } = supabase;
+const sb = createClient(
+  'https://rvzrouffwdtazzghmpty.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2enJvdWZmd2R0YXp6Z2htcHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1Mzc3ODgsImV4cCI6MjA5NTExMzc4OH0.DCKzziCI4p4XX1PUOJsIrjHkSQXe7Vvcp1IVTqvrxCU'
+);
+
+/* ══════════ נתוני תוכן ══════════ */
+
+const CHAPTERS = {
+
+  '00': {
+    title: 'פתיחה',
+    num: '00',
+    desc: 'פלטפורמת לימוד, תכנון וביצוע שמלמדת מהנדסי ערים, אדריכלים ואנשי תכנון כיצד להפוך ידע מקצועי למערכות ואפליקציות עובדות באמצעות AI.',
+    sections: [
+      { id:'s00-a', label:'חזון ומטרה', type:'main' },
+      { id:'s00-b', label:'קהל היעד', type:'main' },
+      { id:'s00-c', label:'כלים נלמדים', type:'main' },
+      { id:'s00-d', label:'מפת הדרכים', type:'main' }
+    ]
+  },
+
+  '01': {
+    title: 'זיקוק הנחיות',
+    num: '01',
+    desc: 'כל הנחיה חכמה בנויה משלוש שכבות נפרדות. הפרדה ביניהן היא ההבדל בין תשובה כללית לבין כלי עבודה מקצועי אמיתי.',
+    sections: [
+      { id:'s01-a', label:'SETTING — זהות', type:'step', num:'01', desc:'המומחיות הקבועה שלא משתנה בין פרויקטים.', dialog:'מי המומחה שאני צריך? אדריכל ביקורתי? מהנדס דייקן? מתכנת שמבין בתב"ע?', prompt:'פעל כמתכנת-אדריכל ומהנדס ערים מומחה. זהותך המקצועית מבוססת על דייקנות משפטית, הבנה עמוקה של חוק התכנון והבנייה ויכולת לתרגם תקנוני תב"ע מורכבים לאלגוריתמים. עליך לצטט תמיד מספרי סעיפים במדויק.' },
+      { id:'s01-b', label:'PROJECT — הקשר', type:'step', num:'02', desc:'המתודולוגיה וחומר הגלם הספציפי של הפרויקט.', dialog:'מה האפליקציה צריכה לדעת לעשות? לנתח טבלה 5? לחלץ זכויות מגרש?', prompt:'אנחנו בונים כלי לניתוח תוכנית בינוי עיר. המטרה: יצירת ממשק שבו לחיצה על מספר מגרש מציגה את כל זכויותיו מטבלה 5, כולל הערות וריכוז דרישות המחולק לפי נושאים (תנועה, נוף, שימור וכו׳).' },
+      { id:'s01-c', label:'CHAT — פעולה', type:'step', num:'03', desc:'המשימה הרגעית. פעולה נקודתית מתוך ההקשר הרחב.', dialog:'מה הפעולה המיידית? חילוץ נתונים עבור מגרש 102? הצלבה עם דרישות התנועה?', prompt:'נתח את מגרש 102. חלץ את כל הפרמטרים מטבלה 5, רכז את הדרישות עבור \'מחלקת תנועה\' ו\'מחלקת נוף\' וצטט את מספרי הסעיפים המדויקים.' }
+    ]
+  },
+
+  '02': {
+    title: 'ניתוח ואפיון',
+    num: '02',
+    desc: 'מקרה בוחן: מנתח תב"ע אוטומטי. המרת מסמכים סטטיים למבנה נתונים חכם שמאפשר קבלת החלטות מהירה.',
+    sections: [
+      { id:'s02-0', label:'פרומפט פתיחה', type:'main' },
+      { id:'s02-a', label:'מטרת העל', type:'step', num:'01', desc:'זיהוי הבעיה התכנונית שהכלי פותר.', dialog:'האם הכלי נועד לחסוך זמן בקריאת תקנונים? למנוע טעויות בחישוב שטחים?', prompt:'אפיין את המטרה המרכזית של אפליקציית \'מנתח טבלה 5\'. הגדר כיצד הכלי יסייע למהנדס עיר לזהות סתירות בין הוראות התקנון לנספח הבינוי.' },
+      { id:'s02-b', label:'מיפוי קלטים', type:'step', num:'02', desc:'מסמכי המקור הסטטוטוריים שהמערכת חייבת לעבד.', dialog:'אילו נספחים קריטיים? גם טבלת השטחים וגם מלל התקנון?', prompt:'ערוך רשימה של כל מסמכי המקור: תקנון תב"ע (PDF), תשריט, נספחי בינוי ותנועה. הגדר לכל מסמך מהו המידע הקריטי שיש לחלץ.' },
+      { id:'s02-c', label:'לוגיקת החילוץ', type:'step', num:'03', desc:'הפרמטרים הטכניים שיש לחלץ מכל מגרש.', dialog:'אילו סעיפים הם \'מוקשים\'? איך מצליבים בין קווי בניין להערות שוליים?', prompt:'נסח הנחיות לחילוץ זכויות: הצלב נתונים בין טבלה 5 לסעיפי השימושים (סעיף 4) וסעיפי הזכויות (סעיף 6). הקפד על חילוץ הערות הצפופות בתחתית הטבלה.' },
+      { id:'s02-d', label:'אפיון פלט', type:'step', num:'04', desc:'כיצד המידע יוצג למשתמש לקבלת החלטות.', dialog:'האם המשתמש רוצה טבלה השוואתית? סיכום \'מותר/אסור\'?', prompt:'אפיין את מבנה הפלט: טבלה דינמית המציגה שטח, תכסית, קווי בניין ומספר יחידות דיור. הוסף עמודה ל\'הערות בודק עירייה\' מחולקת לפי נושאים.' },
+      { id:'s02-e', label:'ניהול סיכונים', type:'step', num:'05', desc:'גבולות האחריות והדיוק של הכלי הדיגיטלי.', dialog:'איפה ה-AI עלול לטעות? כיצד מנחים את המשתמש לבקרת איכות?', prompt:'הוסף פרק למגבלות: \'הכלי מסייע בניתוח אך אינו מחליף בדיקה סטטוטורית\'. לכל נתון מחולץ — ציטוט מספר סעיף לאימות מהיר.' },
+      { id:'s02-f', label:'תרגיל', type:'exercise' }
+    ]
+  },
+
+  '03': {
+    title: 'בנייה וקידוד',
+    num: '03',
+    desc: 'מהרעיון אל המכונה. שימוש ב-Claude Code כשותף לבנייה — לא עוזר, שותף. מסמכי הפרויקט הם ההנחיה; הקוד הוא הפלט.',
+    sections: [
+      { id:'s03-1',  label:'פתיחת תיקיית פרויקט', type:'step', num:'01', desc:'התיקייה היא מרחב העבודה של האפליקציה.', prompt:'mkdir taba-analysis-app\ncd taba-analysis-app\nmkdir docs specs app outputs notes' },
+      { id:'s03-2',  label:'הכנסת מסמכי מקור', type:'step', num:'02', desc:'סריקה וזיהוי מסמכי התכנון (תקנון, תשריט).', prompt:'סרוק את תיקיית docs וזהה את כל מסמכי התכנון שהכנסתי.' },
+      { id:'s03-3',  label:'הכנסת קובץ האפיון', type:'step', num:'03', desc:'הצבת המצפן המקצועי של הפרויקט.', prompt:'קרא את קובץ האפיון בתיקיית specs. הסבר מה המטרה המרכזית של האפליקציה.' },
+      { id:'s03-4',  label:'פתיחת Claude Code', type:'step', num:'04', desc:'הרצת המערכת בתוך הקשר הפרויקט.', prompt:'claude' },
+      { id:'s03-5',  label:'סריקה ראשונית', type:'step', num:'05', desc:'הבנת מבנה התיקיות לפני כתיבת קוד.', prompt:'סרוק את תיקיית הפרויקט. הצג רשימה מסודרת של תיקיות וקבצים. אל תכתוב קוד.' },
+      { id:'s03-6',  label:'בדיקת קריאת מסמכים', type:'step', num:'06', desc:'ווידוא שהמערכת מבינה את הנתונים הסטטוטוריים.', prompt:'קרא את המסמכים שבתיקיית docs ואת קובץ האפיון. הכן סיכום: מה הבנת מכל מסמך?' },
+      { id:'s03-7',  label:'מצב תכנון בלבד', type:'step', num:'07', desc:'עבודה כארכיטקט מערכת — בלי ליצור קוד.', prompt:'עבוד במצב תכנון בלבד. אל תיצור קבצים. הכן תוכנית הכוללת מטרות, משתמשים ומסכים.' },
+      { id:'s03-8',  label:'זיקוק האפיון', type:'step', num:'08', desc:'הפיכת הרעיון הכללי למסמך עבודה ל-MVP.', prompt:'זקק את קובץ האפיון למסמך עבודה ברור לבניית MVP. בסיום כתוב: \'מוכן לעבור לשלב תוכנית הבנייה\'.' },
+      { id:'s03-9',  label:'תוכנית בנייה לפני קוד', type:'step', num:'09', desc:'הכנת תוכנית ביצוע מפורטת.', prompt:'הכן תוכנית בנייה מפורטת: טכנולוגיה, קבצים שיוצרו, וסדר עבודה.' },
+      { id:'s03-10', label:'אישור תחילת בנייה', type:'step', num:'10', desc:'מתן אור ירוק להתחלת כתיבת הקוד.', prompt:'אני מאשר להתחיל בבניית גרסת ה-MVP לפי התוכנית. בנה בתוך תיקיית הפרויקט.' }
+    ]
+  },
+
+  'ma': {
+    title: 'זכויות בנייה',
+    num: 'מ׳א',
+    desc: 'טבלה 5 בתב"ע מרכזת את זכויות הבנייה לפי מגרש: שטח, תכסית, קומות, קווי בניין ושימושים מותרים. מערכת AI מחלצת אותן בשניות.',
+    sections: [
+      { id:'sma-102', label:'מגרש 102', type:'parcel', parcel:102 },
+      { id:'sma-203', label:'מגרש 203', type:'parcel', parcel:203 },
+      { id:'sma-315', label:'מגרש 315', type:'parcel', parcel:315 },
+      { id:'sma-441', label:'מגרש 441', type:'parcel', parcel:441 },
+      { id:'sma-p', label:'פרומפט חילוץ זכויות', type:'main' },
+      { id:'sma-e', label:'תרגיל', type:'exercise' },
+      { id:'sma-i', label:'הצעות לשיפור', type:'main' }
+    ]
+  },
+
+  'mb': {
+    title: 'דרישות עירייה',
+    num: 'מ׳ב',
+    desc: 'כל תב"ע מפורטת מחייבת מענה על דרישות גורמי העירייה. בחר גורם לראיית הדרישות ועדכון סטטוס.',
+    sections: [
+      { id:'smb-t',  label:'תחבורה ותנועה', type:'dept', dept:'תנועה' },
+      { id:'smb-n',  label:'נוף ושטחים פתוחים', type:'dept', dept:'נוף' },
+      { id:'smb-sh', label:'שימור ומורשת', type:'dept', dept:'שימור' },
+      { id:'smb-nk', label:'ניקוז ותשתיות', type:'dept', dept:'ניקוז' },
+      { id:'smb-p',  label:'פרומפט ריכוז דרישות', type:'main' },
+      { id:'smb-e',  label:'תרגיל', type:'exercise' },
+      { id:'smb-ex', label:'דוגמת פלט', type:'main' }
+    ]
+  }
+};
+
+/* ══════════ נתוני מגרשים ══════════ */
+const PARCELS = {
+  102: { rows:[['שטח מגרש','850 מ"ר','לפי תשריט מאושר'],['אחוזי תכסית','40%','מקסימום קרקע'],['שטח בנייה מותר','1,700 מ"ר','כולל מרתף'],['מספר קומות','5 + קרקע','סעיף 6.2'],['קו בניין קדמי','5 מ׳','מקו הרחוב'],['קו בניין אחורי','3 מ׳','—'],['שימושים','מגורים, מסחר בקרקע','סעיף 4.1']], note:'⚠ קומה 5 מותרת בתנאי שתכסיתה לא תעלה על 50% מקומות 1–4 (סעיף 6.2.ג) — מוקש תכנוני.' },
+  203: { rows:[['שטח מגרש','1,200 מ"ר','מגרש פינתי'],['אחוזי תכסית','35%','בשל שטח פינה'],['שטח בנייה','2,520 מ"ר','3 קומות'],['מספר קומות','3 + קרקע','ייעוד מסחרי'],['קו בניין קדמי','0 מ׳','בנייה על הגבול'],['קו בניין צדדי','4 מ׳','לכיוון מגורים'],['שימושים','מסחר, משרדים, מלאכה','סעיפים 4.3–4.5']], note:'מגרש פינתי — חלים שני קווי בניין שונים לפי כיוון הרחוב. ראה סעיף 7.1.' },
+  315: { rows:[['שטח מגרש','620 מ"ר','—'],['אחוזי תכסית','45%','מגרש קטן — תמריץ'],['שטח בנייה','1,116 מ"ר','—'],['מספר קומות','4 + קרקע','סעיף 6.4'],['קו בניין קדמי','3 מ׳','—'],['קו בניין אחורי','2.5 מ׳','—'],['שימושים','מגורים בלבד','אזור מגורים ג׳']], note:'⚠ שימור עץ בוגר — איסור כריתה ללא אישור (סעיף 9.2).' },
+  441: { rows:[['שטח מגרש','2,100 מ"ר','מגרש מורכב'],['אחוזי תכסית','30% / 50%','שני ייעודים'],['שטח בנייה','3,150 מ"ר','חישוב משוקלל'],['מספר קומות','8 + קרקע','גוש גבוה'],['קו בניין קדמי','6 מ׳','—'],['קו בניין אחורי','5 מ׳','—'],['שימושים','מגורים + מסחר + מלונאות','3 ייעודים!']], note:'⚠ שלושה ייעודים — יש לחשב זכויות לכל ייעוד בנפרד (סעיפים 5.1, 5.4, 5.9). סתירה אפשרית בין תכסיות.' }
+};
+
+/* ══════════ נתוני checklist ══════════ */
+const CL_ITEMS = {
+  'תנועה': [
+    { id:'cl1', text:'תוכנית תנועה וחניה — עמידה בדרישות מחלקת תנועה' },
+    { id:'cl2', text:'מספר מקומות חניה לפי ייעוד ושטח' },
+    { id:'cl3', text:'נגישות לרכב כיבוי אש ורכב חירום' }
+  ],
+  'נוף': [
+    { id:'cl4', text:'תוכנית נטיעות ושטחים ירוקים' },
+    { id:'cl5', text:'שימור עצים קיימים — ממצאי סקר עצים' },
+    { id:'cl6', text:'מסך ירוק ומגוון מינים לפי הנחיות' }
+  ],
+  'שימור': [
+    { id:'cl7', text:'בדיקת מבנה לשימור — רישיון לפי חוות דעת' },
+    { id:'cl8', text:'עיצוב חזית בהתאם להנחיות אדריכלות היסטורית' }
+  ],
+  'ניקוז': [
+    { id:'cl9',  text:'תוכנית ניקוז סופית — אישור מחלקת ביוב' },
+    { id:'cl10', text:'חיבור מי גשמים — אחסון / הסדרה' }
+  ]
+};
+
+/* ══════════ מצב ══════════ */
+let activeChapter = null;
+let activeSection = null;
+const clStates = {};
+const clCycle = ['', 'בוצע', 'בטיפול', 'חסר'];
+const clSyms  = { '':'○', 'בוצע':'✓', 'בטיפול':'◑', 'חסר':'✕' };
+
+/* ══════════ פתיחת פרק ══════════ */
+function openChapter(id) {
+  activeChapter = id;
+  activeSection = null;
+  const ch = CHAPTERS[id];
+
+  /* סרגל — צביעה */
+  document.querySelectorAll('.nav-ch-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.ch === id)
+  );
+
+  /* כותרת חלון הקשר */
+  document.getElementById('ctx-chapter-label').textContent = ch.num + ' — ' + ch.title;
+
+  /* בניית חלון הקשר */
+  document.getElementById('ctx-body').innerHTML = buildCtxBody(id);
+  applyContent();
+
+  /* חלון פעולות — ריק */
+  clearAct();
+}
+
+function buildCtxBody(id) {
+  const ch = CHAPTERS[id];
+  let h = `
+    <div class="ctx-chapter-num">${ch.num}</div>
+    <h2 class="ctx-title" id="ctx-title-${id}" contenteditable="true">${ch.title}</h2>
+    <p class="ctx-desc" id="ctx-desc-${id}" contenteditable="true">${ch.desc}</p>
+    <div class="ctx-divider"></div>
+    <span class="ctx-section-label">בחר נושא לפירוט ←</span>
+    <div class="ctx-btn-list">`;
+
+  ch.sections.forEach(s => {
+    const cls = typeClass(s.type);
+    h += `
+      <button class="ctx-btn ${cls}" id="ctxb-${s.id}" onclick="openSection('${id}','${s.id}')">
+        ${s.num ? `<span class="btn-num">${s.num}</span>` : ''}
+        <span class="btn-label">${s.label}</span>
+        <span class="btn-dot"></span>
+      </button>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
+function typeClass(type) {
+  if (type === 'step')     return 'type-step';
+  if (type === 'exercise') return 'type-exercise';
+  if (type === 'parcel')   return 'type-parcel';
+  return '';
+}
+
+/* ══════════ פתיחת סעיף → חלון פעולות ══════════ */
+function openSection(chId, secId) {
+  activeSection = secId;
+  const ch  = CHAPTERS[chId];
+  const sec = ch.sections.find(s => s.id === secId);
+
+  /* צביעת כפתורי הקשר */
+  document.querySelectorAll('.ctx-btn').forEach(b =>
+    b.classList.toggle('active', b.id === 'ctxb-' + secId)
+  );
+
+  /* כותרת חלון פעולות */
+  document.getElementById('act-section-label').textContent = sec.label;
+
+  /* בניית תוכן */
+  document.getElementById('act-body').innerHTML = buildActBody(chId, sec);
+  applyContent();
+}
+
+function buildActBody(chId, sec) {
+  /* ── שלב תהליך ── */
+  if (sec.type === 'step') {
+    let h = block('שלב', `
+      <div class="act-title">${sec.num ? sec.num + ' — ' : ''}${sec.label}</div>
+      ${sec.desc ? `<div class="act-subtitle">${sec.desc}</div>` : ''}
+      ${sec.dialog ? `<div class="act-dialog"><strong>שאלות מנחות:</strong> ${sec.dialog}</div>` : ''}
+      <div class="act-prompt" id="ap-${sec.id}" contenteditable="true">${sec.prompt || ''}</div>
+    `, `ap-${sec.id}`);
+    return h;
+  }
+
+  /* ── מגרש ── */
+  if (sec.type === 'parcel') {
+    const p = PARCELS[sec.parcel];
+    return block('דוגמה', `
+      <div class="act-title">מגרש ${sec.parcel}</div>
+      <table class="rights-table">
+        <thead><tr><th>פרמטר</th><th>ערך</th><th>הערות</th></tr></thead>
+        <tbody>${p.rows.map(([a,b,c]) =>
+          `<tr><td style="font-weight:600;">${a}</td><td class="hl">${b}</td><td style="color:#999;font-size:0.75rem;">${c}</td></tr>`
+        ).join('')}</tbody>
+      </table>
+      <div class="parcel-note">${p.note}</div>
+    `, null);
+  }
+
+  /* ── גורם עירייה (checklist) ── */
+  if (sec.type === 'dept') {
+    const items = CL_ITEMS[sec.dept] || [];
+    let clHtml = `<div class="act-title">${sec.label}</div>`;
+    items.forEach(item => {
+      const st = clStates[item.id] || '';
+      clHtml += `
+        <div class="cl-item ${st}" id="${item.id}" onclick="cycleStatus('${item.id}')">
+          <div class="cl-dot">${clSyms[st]}</div>
+          <span style="flex:1;">${item.text}</span>
+          <span class="cl-dept">${sec.dept}</span>
+        </div>`;
+    });
+    clHtml += clStatsHtml();
+    return block('מעקב', clHtml, null);
+  }
+
+  /* ── תרגיל ── */
+  if (sec.type === 'exercise') {
+    const texts = {
+      's02-f': 'קח תקנון תב"ע קיים. זהה 3 מוקשים תכנוניים — תנאים שאם לא יתקיימו ימנעו מתן היתר. נסח פרומפט לחילוץ שלושתם בצורה מובנית.',
+      'sma-e': 'טען קובץ תקנון תב"ע. הרץ את הפרומפט על 3 מגרשים. אם אחד מהם מורכב ממספר ייעודים — כיצד תציג את הזכויות בנפרד?',
+      'smb-e': 'קח תקנון תב"ע קיים. הרץ את הפרומפט. האם ה-AI זיהה את כל הגורמים? אלו דרישות פוספסו? כיצד תשפר את הפרומפט?'
+    };
+    const txt = texts[sec.id] || 'בצע את התרגיל לפי ההנחיות שקיבלת בשלבים הקודמים.';
+    return `<div class="act-block תרגיל">
+      <div class="act-block-head"><span class="act-type-tag תרגיל">תרגיל</span></div>
+      <div class="act-block-body"><p class="act-exercise-text" id="ex-${sec.id}" contenteditable="true">${txt}</p></div>
+    </div>`;
+  }
+
+  /* ── תוכן ראשי (main) לפי id ── */
+  return buildMainContent(chId, sec.id);
+}
+
+function buildMainContent(chId, secId) {
+  /* פרק 00 */
+  if (secId === 's00-a') return block('מידע', `
+    <div class="act-title">חזון ומטרה</div>
+    <div class="act-subtitle" contenteditable="true">Urban AI Lab היא פלטפורמת לימוד, תכנון וביצוע שמלמדת מהנדסי ערים כיצד להפוך ידע מקצועי למערכות עובדות באמצעות AI.<br><br>המטרה אינה ללמד רק כתיבת קוד, אלא ללמד תהליך מלא: רעיון → אפיון → ארכיטקטורה → AI → ממשק → מוצר עובד.</div>
+    <div class="meta-cards" style="margin-top:1rem;">
+      <div class="meta-card"><span class="ml">מטרה</span><span class="mv">רעיון → מוצר</span></div>
+      <div class="meta-card"><span class="ml">סביבה</span><span class="mv">VS Code + Claude</span></div>
+      <div class="meta-card"><span class="ml">פרויקט ליבה</span><span class="mv">מנתח תב"ע</span></div>
+      <div class="meta-card"><span class="ml">קהל יעד</span><span class="mv">מהנדסי ערים</span></div>
+    </div>`, null);
+
+  if (secId === 's00-b') return block('מידע', `
+    <div class="act-title">קהל היעד</div>
+    <div class="act-subtitle" contenteditable="true">מהנדסי ערים · אדריכלי ערים · מתכננים עירוניים · יועצי תכנון · אנשי GIS · אנשי רישוי ותכנון סטטוטורי</div>`, null);
+
+  if (secId === 's00-c') return block('מידע', `
+    <div class="act-title">כלים נלמדים</div>
+    <div class="act-subtitle" contenteditable="true">Visual Studio Code · Claude · Claude Code · Supabase · GitHub · APIs · מסדי נתונים · ניהול גרסאות · אוטומציות</div>`, null);
+
+  if (secId === 's00-d') return block('מידע', `
+    <div class="act-title">מפת הדרכים</div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;">
+      ${['00 — פתיחה וחזון','01 — זיקוק הנחיות (Setting / Project / Chat)','02 — ניתוח ואפיון (5 שלבים)','03 — בנייה וקידוד (10 שלבים)','מ׳א — זכויות בנייה (דוגמה)','מ׳ב — דרישות עירייה (דוגמה)'].map((t,i)=>
+      `<div style="display:flex;gap:0.7rem;align-items:center;padding:0.5rem 0.7rem;background:#f9f9f7;border-radius:3px;font-size:0.82rem;">
+        <span style="font-family:monospace;font-size:0.6rem;color:#bbb;min-width:18px;">${i}</span>
+        <span>${t}</span>
+       </div>`).join('')}
+    </div>`, null);
+
+  /* פרק 02 — פרומפט פתיחה */
+  if (secId === 's02-0') return block('פרומפט', `
+    <div class="act-title">פרומפט פתיחה — אפיון הניתוח</div>
+    <div class="act-prompt" id="ap-s02-0" contenteditable="true">"נתח את קובץ התב"ע המצורף. חלץ בטבלה השוואתית את זכויות הבנייה העיקריות, קווי הבניין ומגבלות הצפיפות. סמן באדום \'מוקשים\' תכנוניים כגון תנאים למתן היתר."</div>
+  `, 'ap-s02-0');
+
+  /* מ׳א — פרומפט */
+  if (secId === 'sma-p') return block('פרומפט', `
+    <div class="act-title">פרומפט — חילוץ זכויות מגרש</div>
+    <div class="act-prompt" id="ap-sma-p" contenteditable="true">נתח את מגרש [מספר] מתוך טבלה 5 של תב"ע [שם]. חלץ: שטח מגרש, אחוזי תכסית, שטח בנייה מותר, מספר קומות מרבי, קווי בניין (קדמי/אחורי/צדדי), שימושים מותרים, והערות מיוחדות. הצג בטבלה. ציין מספרי סעיפים לכל ערך.</div>
+  `, 'ap-sma-p');
+
+  /* מ׳א — שיפורים */
+  if (secId === 'sma-i') return `<div class="act-block דוגמה">
+    <div class="act-block-head"><span class="act-type-tag דוגמה">הצעות לשיפור</span></div>
+    <div class="act-block-body">
+      <div class="improve-cards">
+        <div class="improve-card"><span class="ic-tag">הצלבה</span><p>השווה בין טבלה 5 לנספח הבינוי לזיהוי סתירות.</p></div>
+        <div class="improve-card"><span class="ic-tag">היסטוריה</span><p>השווה גרסאות שונות של תב"ע לזיהוי שינויי זכויות.</p></div>
+        <div class="improve-card"><span class="ic-tag">ייצוא</span><p>ייצוא אוטומטי לאקסל עם נוסחאות חישוב שטחים.</p></div>
+        <div class="improve-card"><span class="ic-tag">מוקשים</span><p>סימון אוטומטי של תנאים למתן היתר בצבע אדום.</p></div>
+      </div>
+    </div>
+  </div>`;
+
+  /* מ׳ב — פרומפט */
+  if (secId === 'smb-p') return block('פרומפט', `
+    <div class="act-title">פרומפט — ריכוז דרישות גורמי עירייה</div>
+    <div class="act-prompt" id="ap-smb-p" contenteditable="true">סרוק את הוראות תב"ע [שם]. זהה וארגן את כל הדרישות לפי גורמי העירייה: (1) תנועה, (2) נוף, (3) שימור, (4) ניקוז. עבור כל דרישה: ציין מספר סעיף, נוסח הדרישה, ומי אחראי לביצוע. הוסף שדה 'סטטוס' ריק למעקב.</div>
+  `, 'ap-smb-p');
+
+  /* מ׳ב — דוגמת פלט */
+  if (secId === 'smb-ex') return block('דוגמה', `
+    <div class="act-title">דוגמת פלט</div>
+    <table class="rights-table" style="font-size:0.8rem;">
+      <thead><tr><th>גורם</th><th>דרישה</th><th>סעיף</th><th>סטטוס</th></tr></thead>
+      <tbody>
+        <tr><td class="hl">תנועה</td><td>תוכנית תנועה — גישה מרחוב ראשי בלבד</td><td>6.3.א</td><td style="color:#f59e0b;font-weight:700;">בטיפול</td></tr>
+        <tr><td class="hl">נוף</td><td>נטיעת 3 עצי צל בשטח ציבורי</td><td>8.1.ג</td><td style="color:#16a34a;font-weight:700;">בוצע</td></tr>
+        <tr><td class="hl">שימור</td><td>חזית היסטורית — אבן ירושלמית לפי מפרט</td><td>12.2</td><td style="color:var(--bx);font-weight:700;">חסר</td></tr>
+      </tbody>
+    </table>`, null);
+
+  return `<div class="act-empty"><div class="act-empty-text">בחר נושא מחלון ההקשר</div></div>`;
+}
+
+/* ══════════ עזרי בנייה ══════════ */
+function block(type, content, copyId) {
+  const copyBtn = copyId
+    ? `<button class="act-copy-btn" onclick="copyBlock('${copyId}',this)">⎘ העתק</button>`
+    : '';
+  return `
+    <div class="act-block ${type}">
+      <div class="act-block-head">
+        <span class="act-type-tag ${type}">${type}</span>
+        ${copyBtn}
+      </div>
+      <div class="act-block-body">${content}</div>
+    </div>`;
+}
+
+function clearAct() {
+  document.getElementById('act-section-label').textContent = '—';
+  document.getElementById('act-body').innerHTML = `
+    <div class="act-empty">
+      <div class="act-empty-arrow">←</div>
+      <div class="act-empty-text">בחר נושא<br>מחלון ההקשר</div>
+    </div>`;
+}
+
+/* ══════════ Checklist ══════════ */
+async function cycleStatus(id) {
+  const cur  = clStates[id] || '';
+  const next = clCycle[(clCycle.indexOf(cur) + 1) % clCycle.length];
+  clStates[id] = next;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'cl-item ' + next;
+  el.querySelector('.cl-dot').innerText = clSyms[next];
+  await sb.from('checklist').upsert({ id, status: next });
+  updateClStats();
+}
+
+function updateClStats() {
+  let done=0, pending=0, missing=0;
+  Object.values(clStates).forEach(v => {
+    if (v==='בוצע') done++;
+    else if (v==='בטיפול') pending++;
+    else if (v==='חסר') missing++;
+  });
+  const upd = (id, val) => { const el=document.getElementById(id); if(el) el.innerText=val; };
+  const total = Object.keys(CL_ITEMS).reduce((a,k)=>a+CL_ITEMS[k].length,0);
+  upd('cl-done', done); upd('cl-pending', pending); upd('cl-missing', missing); upd('cl-total', total);
+}
+
+function clStatsHtml() {
+  return `<div class="cl-stats">
+    <div class="cl-stat"><div class="n" id="cl-done" style="color:#16a34a;">0</div><div class="l">בוצע</div></div>
+    <div class="cl-stat"><div class="n" id="cl-pending" style="color:#f59e0b;">0</div><div class="l">בטיפול</div></div>
+    <div class="cl-stat"><div class="n" id="cl-missing" style="color:var(--bx);">0</div><div class="l">חסר</div></div>
+    <div class="cl-stat"><div class="n" id="cl-total" style="color:#333;">10</div><div class="l">סה"כ</div></div>
+  </div>`;
+}
+
+async function loadChecklist() {
+  const { data } = await sb.from('checklist').select('*');
+  if (data) data.forEach(row => { clStates[row.id] = row.status; });
+}
+
+/* ══════════ העתקה ══════════ */
+function copyBlock(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).catch(() => {
+    const t = document.createElement('textarea');
+    t.value = el.innerText;
+    document.body.appendChild(t); t.select();
+    document.execCommand('copy');
+    document.body.removeChild(t);
+  });
+  showToast('הועתק ✓');
+  if (btn) {
+    btn.classList.add('הועתק');
+    btn.textContent = '✓';
+    setTimeout(() => { btn.classList.remove('הועתק'); btn.textContent = '⎘ העתק'; }, 2000);
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ══════════ הערות ══════════ */
+const CH_NAMES = {'00':'פתיחה','01':'זיקוק','02':'ניתוח','03':'בנייה','ma':'מ׳א','mb':'מ׳ב'};
+
+function openNotes() {
+  document.getElementById('note-ctx-label').textContent =
+    activeChapter ? 'הקשר: ' + CH_NAMES[activeChapter] : 'ללא הקשר';
+  renderNotes();
+  openPnl('notes-overlay');
+}
+async function saveNote() {
+  const input = document.getElementById('note-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const { error } = await sb.from('notes').insert({ chapter: activeChapter || null, text });
+  if (error) { showToast('שגיאה בשמירה ✕'); return; }
+  input.value = '';
+  renderNotes();
+  showToast('הערה נשמרה ✓');
+}
+async function renderNotes() {
+  const { data, error } = await sb.from('notes').select('*').order('created_at', { ascending: false });
+  const list = document.getElementById('notes-list');
+  if (error || !data || !data.length) {
+    list.innerHTML = '<div style="color:#ccc;font-size:0.82rem;text-align:center;padding:1.5rem;">אין הערות עדיין</div>';
+    return;
+  }
+  list.innerHTML = data.map(n => `
+    <div class="note-card">
+      <div class="note-meta">${CH_NAMES[n.chapter]||n.chapter||'כללי'} · ${new Date(n.created_at).toLocaleDateString('he-IL')}
+        <button onclick="deleteNote('${n.id}')" style="background:none;border:none;color:var(--bx);cursor:pointer;font-weight:900;margin-right:6px;">×</button>
+      </div>${n.text}
+    </div>`).join('');
+}
+async function deleteNote(id) {
+  await sb.from('notes').delete().eq('id', id);
+  renderNotes();
+}
+async function exportNotes() {
+  const { data } = await sb.from('notes').select('*').order('created_at', { ascending: false });
+  if (!data || !data.length) return;
+  const text = data.map(n => `[${CH_NAMES[n.chapter]||'כללי'}] ${new Date(n.created_at).toLocaleDateString('he-IL')}\n${n.text}`).join('\n\n---\n\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type:'text/plain;charset=utf-8' }));
+  a.download = 'uai-notes.txt';
+  a.click();
+}
+
+/* ══════════ קישורים ══════════ */
+function openLinks() { renderLinks(); openPnl('links-overlay'); }
+function saveLink() {
+  const input = document.getElementById('link-input');
+  if (!input.value.trim()) return;
+  let links = JSON.parse(localStorage.getItem('studio_links') || '[]');
+  links.push(input.value.trim());
+  localStorage.setItem('studio_links', JSON.stringify(links));
+  input.value = '';
+  renderLinks();
+  showToast('קישור נשמר ✓');
+}
+function renderLinks() {
+  const links = JSON.parse(localStorage.getItem('studio_links') || '[]');
+  const list = document.getElementById('links-list');
+  if (!links.length) { list.innerHTML = '<div style="color:#ccc;font-size:0.82rem;padding:1rem;">אין קישורים</div>'; return; }
+  list.innerHTML = links.map((l,i) => `
+    <div class="link-row">
+      <a href="${l.startsWith('http')?l:'https://'+l}" target="_blank">${l}</a>
+      <button class="link-del" onclick="removeLink(${i})">×</button>
+    </div>`).join('');
+}
+function removeLink(i) {
+  let links = JSON.parse(localStorage.getItem('studio_links') || '[]');
+  links.splice(i, 1);
+  localStorage.setItem('studio_links', JSON.stringify(links));
+  renderLinks();
+}
+
+/* ══════════ פאנלים ══════════ */
+function openPnl(id) { document.getElementById(id).classList.add('open'); }
+function closePnl(id) { document.getElementById(id).classList.remove('open'); }
+
+/* ══════════ Canvas ══════════ */
+const canvas = document.getElementById('drawing-canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false, drawMode = false;
+function resize() { canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+window.addEventListener('resize', resize); resize();
+function toggleDraw() {
+  drawMode = !drawMode;
+  canvas.classList.toggle('active', drawMode);
+  document.getElementById('btn-draw').classList.toggle('active', drawMode);
+}
+function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+function pos(e) { return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
+canvas.addEventListener('mousedown', e=>{ if(!drawMode)return; drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); });
+canvas.addEventListener('mousemove', e=>{ if(!drawing||!drawMode)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.strokeStyle='#630d16'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(); });
+canvas.addEventListener('mouseup', ()=>drawing=false);
+canvas.addEventListener('touchstart', e=>{ if(!drawMode)return; e.preventDefault(); drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); },{passive:false});
+canvas.addEventListener('touchmove', e=>{ if(!drawing||!drawMode)return; e.preventDefault(); const p=pos(e); ctx.lineTo(p.x,p.y); ctx.strokeStyle='#630d16'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(); },{passive:false});
+canvas.addEventListener('touchend', ()=>drawing=false);
+
+/* ══════════ עריכה ══════════ */
+let editMode = false;
+function toggleEdit() {
+  editMode = !editMode;
+  document.getElementById('btn-edit').classList.toggle('active', editMode);
+  document.querySelectorAll('[contenteditable]').forEach(el => el.classList.toggle('edit-on', editMode));
+}
+
+/* ══════════ Formatting Toolbar ══════════ */
+const fmtBar = document.getElementById('fmt-toolbar');
+let savedRange = null;
+
+document.addEventListener('selectionchange', () => {
+  const sel = document.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) {
+    fmtBar.classList.remove('show');
+    return;
+  }
+  const node = sel.anchorNode;
+  const el = node ? (node.nodeType === 3 ? node.parentElement : node) : null;
+  if (!el || !el.closest('[contenteditable]')) { fmtBar.classList.remove('show'); return; }
+
+  savedRange = sel.getRangeAt(0).cloneRange();
+  const rect = savedRange.getBoundingClientRect();
+  const tW = 220;
+  let left = rect.left + rect.width / 2 - tW / 2;
+  left = Math.max(8, Math.min(window.innerWidth - tW - 8, left));
+  let top = rect.top - 52;
+  if (top < 8) top = rect.bottom + 8;
+  fmtBar.style.top  = top  + 'px';
+  fmtBar.style.left = left + 'px';
+  fmtBar.classList.add('show');
+});
+
+fmtBar.addEventListener('mousedown', e => e.preventDefault());
+
+function restoreSelection() {
+  if (!savedRange) return;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedRange);
+}
+
+function fmt(cmd, value) {
+  restoreSelection();
+  document.execCommand(cmd, false, value || null);
+  saveContent();
+}
+
+function fmtSize(delta) {
+  restoreSelection();
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return;
+  const node = sel.anchorNode;
+  const el = node ? (node.nodeType === 3 ? node.parentElement : node) : null;
+  const cur = el ? (parseFloat(window.getComputedStyle(el).fontSize) || 14) : 14;
+  const next = Math.max(8, Math.min(60, cur + delta * 2));
+  document.execCommand('fontSize', false, '7');
+  document.querySelectorAll('font[size="7"]').forEach(f => {
+    const span = document.createElement('span');
+    span.style.fontSize = next + 'px';
+    span.innerHTML = f.innerHTML;
+    f.replaceWith(span);
+  });
+  saveContent();
+}
+
+/* כפתורי Bold / Italic */
+document.getElementById('fmt-bold').addEventListener('mousedown',   e => { e.preventDefault(); fmt('bold'); });
+document.getElementById('fmt-italic').addEventListener('mousedown', e => { e.preventDefault(); fmt('italic'); });
+document.getElementById('fmt-color-pick').addEventListener('input', e => { fmt('foreColor', e.target.value); });
+
+/* ══════════ Panel Resize ══════════ */
+const navBarEl  = document.getElementById('nav-bar');
+const ctxPaneEl = document.getElementById('ctx-pane');
+let resizing = null, resizeStartX = 0, resizeStartW = 0;
+
+['rh-1', 'rh-2'].forEach(rhId => {
+  document.getElementById(rhId).addEventListener('mousedown', e => {
+    resizing = rhId;
+    resizeStartX = e.clientX;
+    resizeStartW = rhId === 'rh-1' ? navBarEl.offsetWidth : ctxPaneEl.offsetWidth;
+    document.getElementById(rhId).classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+});
+
+document.addEventListener('mousemove', e => {
+  if (!resizing) return;
+  const dx = resizeStartX - e.clientX; /* RTL: drag left = grow */
+  if (resizing === 'rh-1') {
+    navBarEl.style.width  = Math.max(160, Math.min(350, resizeStartW + dx)) + 'px';
+  } else {
+    ctxPaneEl.style.width = Math.max(250, Math.min(600, resizeStartW + dx)) + 'px';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (!resizing) return;
+  document.getElementById(resizing).classList.remove('dragging');
+  resizing = null;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  savePanelWidths();
+});
+
+/* ══════════ Content Persistence ══════════ */
+document.addEventListener('input', e => {
+  if (e.target.contentEditable === 'true') saveContent();
+});
+
+function saveContent() {
+  const existing = JSON.parse(localStorage.getItem('uai_content') || '{}');
+  document.querySelectorAll('[contenteditable][id]').forEach(el => {
+    existing[el.id] = el.innerHTML;
+  });
+  localStorage.setItem('uai_content', JSON.stringify(existing));
+}
+
+function loadContent() {
+  window._savedContent = JSON.parse(localStorage.getItem('uai_content') || '{}');
+}
+
+function applyContent() {
+  const data = window._savedContent || {};
+  Object.entries(data).forEach(([id, html]) => {
+    const el = document.getElementById(id);
+    if (el && el.contentEditable === 'true') el.innerHTML = html;
+  });
+}
+
+function saveAll() {
+  saveContent();
+  savePanelWidths();
+  /* אנימציית כפתור */
+  const btn   = document.getElementById('save-btn');
+  const label = document.getElementById('save-label');
+  const icon  = document.getElementById('save-icon');
+  btn.style.background = '#16a34a';
+  label.textContent = 'נשמר ✓';
+  icon.textContent  = '✓';
+  setTimeout(() => {
+    btn.style.background = '';
+    label.textContent = 'שמור';
+    icon.textContent  = '💾';
+  }, 1800);
+  showToast('כל השינויים נשמרו ✓');
+}
+
+function savePanelWidths() {
+  localStorage.setItem('uai_panels', JSON.stringify({
+    nav: navBarEl.offsetWidth,
+    ctx: ctxPaneEl.offsetWidth
+  }));
+}
+
+function loadPanelWidths() {
+  try {
+    const d = JSON.parse(localStorage.getItem('uai_panels') || '{}');
+    if (d.nav) navBarEl.style.width = d.nav + 'px';
+    if (d.ctx) ctxPaneEl.style.width = d.ctx + 'px';
+  } catch(e) {}
+}
+
+/* ══════════ אתחול ══════════ */
+loadChecklist();
+loadContent();
+loadPanelWidths();
+
+</script>
+</body>
+</html>

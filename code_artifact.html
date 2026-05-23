@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Urban AI Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;600;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bx: #630d16;
@@ -945,6 +946,13 @@ body {
 <script>
 'use strict';
 
+/* ══════════ Supabase ══════════ */
+const { createClient } = supabase;
+const sb = createClient(
+  'https://rvzrouffwdtazzghmpty.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2enJvdWZmd2R0YXp6Z2htcHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1Mzc3ODgsImV4cCI6MjA5NTExMzc4OH0.DCKzziCI4p4XX1PUOJsIrjHkSQXe7Vvcp1IVTqvrxCU'
+);
+
 /* ══════════ נתוני תוכן ══════════ */
 
 const CHAPTERS = {
@@ -1307,7 +1315,7 @@ function clearAct() {
 }
 
 /* ══════════ Checklist ══════════ */
-function cycleStatus(id) {
+async function cycleStatus(id) {
   const cur  = clStates[id] || '';
   const next = clCycle[(clCycle.indexOf(cur) + 1) % clCycle.length];
   clStates[id] = next;
@@ -1315,7 +1323,7 @@ function cycleStatus(id) {
   if (!el) return;
   el.className = 'cl-item ' + next;
   el.querySelector('.cl-dot').innerText = clSyms[next];
-  localStorage.setItem('uai_cl', JSON.stringify(clStates));
+  await sb.from('checklist').upsert({ id, status: next });
   updateClStats();
 }
 
@@ -1340,9 +1348,9 @@ function clStatsHtml() {
   </div>`;
 }
 
-function loadChecklist() {
-  const saved = JSON.parse(localStorage.getItem('uai_cl') || '{}');
-  Object.assign(clStates, saved);
+async function loadChecklist() {
+  const { data } = await sb.from('checklist').select('*');
+  if (data) data.forEach(row => { clStates[row.id] = row.status; });
 }
 
 /* ══════════ העתקה ══════════ */
@@ -1380,37 +1388,38 @@ function openNotes() {
   renderNotes();
   openPnl('notes-overlay');
 }
-function saveNote() {
+async function saveNote() {
   const input = document.getElementById('note-input');
   const text = input.value.trim();
   if (!text) return;
-  let notes = JSON.parse(localStorage.getItem('uai_notes') || '[]');
-  notes.unshift({ ch: activeChapter, text, time: new Date().toLocaleDateString('he-IL') });
-  localStorage.setItem('uai_notes', JSON.stringify(notes));
+  const { error } = await sb.from('notes').insert({ chapter: activeChapter || null, text });
+  if (error) { showToast('שגיאה בשמירה ✕'); return; }
   input.value = '';
   renderNotes();
   showToast('הערה נשמרה ✓');
 }
-function renderNotes() {
-  const notes = JSON.parse(localStorage.getItem('uai_notes') || '[]');
+async function renderNotes() {
+  const { data, error } = await sb.from('notes').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('notes-list');
-  if (!notes.length) { list.innerHTML = '<div style="color:#ccc;font-size:0.82rem;text-align:center;padding:1.5rem;">אין הערות עדיין</div>'; return; }
-  list.innerHTML = notes.map((n,i) => `
+  if (error || !data || !data.length) {
+    list.innerHTML = '<div style="color:#ccc;font-size:0.82rem;text-align:center;padding:1.5rem;">אין הערות עדיין</div>';
+    return;
+  }
+  list.innerHTML = data.map(n => `
     <div class="note-card">
-      <div class="note-meta">${CH_NAMES[n.ch]||n.ch||'כללי'} · ${n.time}
-        <button onclick="deleteNote(${i})" style="background:none;border:none;color:var(--bx);cursor:pointer;font-weight:900;margin-right:6px;">×</button>
+      <div class="note-meta">${CH_NAMES[n.chapter]||n.chapter||'כללי'} · ${new Date(n.created_at).toLocaleDateString('he-IL')}
+        <button onclick="deleteNote('${n.id}')" style="background:none;border:none;color:var(--bx);cursor:pointer;font-weight:900;margin-right:6px;">×</button>
       </div>${n.text}
     </div>`).join('');
 }
-function deleteNote(i) {
-  let notes = JSON.parse(localStorage.getItem('uai_notes') || '[]');
-  notes.splice(i, 1);
-  localStorage.setItem('uai_notes', JSON.stringify(notes));
+async function deleteNote(id) {
+  await sb.from('notes').delete().eq('id', id);
   renderNotes();
 }
-function exportNotes() {
-  const notes = JSON.parse(localStorage.getItem('uai_notes') || '[]');
-  const text = notes.map(n => `[${CH_NAMES[n.ch]||'כללי'}] ${n.time}\n${n.text}`).join('\n\n---\n\n');
+async function exportNotes() {
+  const { data } = await sb.from('notes').select('*').order('created_at', { ascending: false });
+  if (!data || !data.length) return;
+  const text = data.map(n => `[${CH_NAMES[n.chapter]||'כללי'}] ${new Date(n.created_at).toLocaleDateString('he-IL')}\n${n.text}`).join('\n\n---\n\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type:'text/plain;charset=utf-8' }));
   a.download = 'uai-notes.txt';
@@ -1606,7 +1615,6 @@ function applyContent() {
 function saveAll() {
   saveContent();
   savePanelWidths();
-  localStorage.setItem('uai_cl', JSON.stringify(clStates));
   /* אנימציית כפתור */
   const btn   = document.getElementById('save-btn');
   const label = document.getElementById('save-label');
@@ -1641,6 +1649,7 @@ function loadPanelWidths() {
 loadChecklist();
 loadContent();
 loadPanelWidths();
+
 </script>
 </body>
 </html>

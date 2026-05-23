@@ -1228,11 +1228,11 @@ function buildMainContent(chId, secId) {
 
   if (secId === 's00-b') return block('מידע', `
     <div class="act-title">קהל היעד</div>
-    <div class="act-subtitle" contenteditable="true">מהנדסי ערים · אדריכלי ערים · מתכננים עירוניים · יועצי תכנון · אנשי GIS · אנשי רישוי ותכנון סטטוטורי</div>`, null);
+    <div class="act-subtitle" id="ce-s00-b" contenteditable="true">מהנדסי ערים · אדריכלי ערים · מתכננים עירוניים · יועצי תכנון · אנשי GIS · אנשי רישוי ותכנון סטטוטורי</div>`, null);
 
   if (secId === 's00-c') return block('מידע', `
     <div class="act-title">כלים נלמדים</div>
-    <div class="act-subtitle" contenteditable="true">Visual Studio Code · Claude · Claude Code · Supabase · GitHub · APIs · מסדי נתונים · ניהול גרסאות · אוטומציות</div>`, null);
+    <div class="act-subtitle" id="ce-s00-c" contenteditable="true">Visual Studio Code · Claude · Claude Code · Supabase · GitHub · APIs · מסדי נתונים · ניהול גרסאות · אוטומציות</div>`, null);
 
   if (secId === 's00-d') return block('מידע', `
     <div class="act-title">מפת הדרכים</div>
@@ -1588,20 +1588,36 @@ document.addEventListener('mouseup', () => {
 });
 
 /* ══════════ Content Persistence ══════════ */
+let _saveTimer = null;
+
 document.addEventListener('input', e => {
-  if (e.target.contentEditable === 'true') saveContent();
+  if (e.target.contentEditable !== 'true') return;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => saveContent(), 1500);
 });
 
-function saveContent() {
-  const existing = JSON.parse(localStorage.getItem('uai_content') || '{}');
+async function saveContent() {
+  const updates = [];
   document.querySelectorAll('[contenteditable][id]').forEach(el => {
-    existing[el.id] = el.innerHTML;
+    updates.push({ id: el.id, html: el.innerHTML });
   });
-  localStorage.setItem('uai_content', JSON.stringify(existing));
+  if (!updates.length) return;
+  /* שמירה ב-Supabase */
+  await sb.from('content').upsert(updates);
+  /* fallback ל-localStorage */
+  const map = {};
+  updates.forEach(u => { map[u.id] = u.html; });
+  localStorage.setItem('uai_content', JSON.stringify(map));
 }
 
-function loadContent() {
-  window._savedContent = JSON.parse(localStorage.getItem('uai_content') || '{}');
+async function loadContent() {
+  const { data, error } = await sb.from('content').select('*');
+  if (data && data.length) {
+    window._savedContent = {};
+    data.forEach(row => { window._savedContent[row.id] = row.html; });
+  } else {
+    window._savedContent = JSON.parse(localStorage.getItem('uai_content') || '{}');
+  }
 }
 
 function applyContent() {
@@ -1647,7 +1663,7 @@ function loadPanelWidths() {
 
 /* ══════════ אתחול ══════════ */
 loadChecklist();
-loadContent();
+loadContent().then(() => applyContent());
 loadPanelWidths();
 
 </script>

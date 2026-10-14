@@ -949,7 +949,7 @@ body {
 /* ══════════ Supabase ══════════ */
 const { createClient } = supabase;
 const sb = createClient(
-  'https://rvzrouffwdtazzghmpty.supabase.co',
+  'https://ktqmwpbzcnzkhjskqisy.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2enJvdWZmd2R0YXp6Z2htcHR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1Mzc3ODgsImV4cCI6MjA5NTExMzc4OH0.DCKzziCI4p4XX1PUOJsIrjHkSQXe7Vvcp1IVTqvrxCU'
 );
 
@@ -1323,7 +1323,7 @@ async function cycleStatus(id) {
   if (!el) return;
   el.className = 'cl-item ' + next;
   el.querySelector('.cl-dot').innerText = clSyms[next];
-  await sb.from('checklist').upsert({ id, status: next });
+  await sb.from('archcoder_checklist').upsert({ id, status: next });
   updateClStats();
 }
 
@@ -1349,7 +1349,7 @@ function clStatsHtml() {
 }
 
 async function loadChecklist() {
-  const { data } = await sb.from('checklist').select('*');
+  const { data } = await sb.from('archcoder_checklist').select('*');
   if (data) data.forEach(row => { clStates[row.id] = row.status; });
 }
 
@@ -1392,14 +1392,14 @@ async function saveNote() {
   const input = document.getElementById('note-input');
   const text = input.value.trim();
   if (!text) return;
-  const { error } = await sb.from('notes').insert({ chapter: activeChapter || null, text });
+  const { error } = await sb.from('archcoder_notes').insert({ chapter: activeChapter || null, text });
   if (error) { showToast('שגיאה בשמירה ✕'); return; }
   input.value = '';
   renderNotes();
   showToast('הערה נשמרה ✓');
 }
 async function renderNotes() {
-  const { data, error } = await sb.from('notes').select('*').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('archcoder_notes').select('*').order('created_at', { ascending: false });
   const list = document.getElementById('notes-list');
   if (error || !data || !data.length) {
     list.innerHTML = '<div style="color:#ccc;font-size:0.82rem;text-align:center;padding:1.5rem;">אין הערות עדיין</div>';
@@ -1413,11 +1413,11 @@ async function renderNotes() {
     </div>`).join('');
 }
 async function deleteNote(id) {
-  await sb.from('notes').delete().eq('id', id);
+  await sb.from('archcoder_notes').delete().eq('id', id);
   renderNotes();
 }
 async function exportNotes() {
-  const { data } = await sb.from('notes').select('*').order('created_at', { ascending: false });
+  const { data } = await sb.from('archcoder_notes').select('*').order('created_at', { ascending: false });
   if (!data || !data.length) return;
   const text = data.map(n => `[${CH_NAMES[n.chapter]||'כללי'}] ${new Date(n.created_at).toLocaleDateString('he-IL')}\n${n.text}`).join('\n\n---\n\n');
   const a = document.createElement('a');
@@ -1606,7 +1606,7 @@ async function saveContent() {
   if (!window._savedContent) window._savedContent = {};
   updates.forEach(u => { window._savedContent[u.id] = u.html; });
   /* שמירה ב-Supabase */
-  const { error } = await sb.from('content').upsert(updates);
+  const { error } = await sb.from('archcoder_content').upsert(updates);
   if (error) { console.error('Supabase save error:', error); showToast('שגיאה בשמירה ✕'); return; }
   /* fallback ל-localStorage — merge */
   const existing = JSON.parse(localStorage.getItem('uai_content') || '{}');
@@ -1616,7 +1616,7 @@ async function saveContent() {
 }
 
 async function loadContent() {
-  const { data, error } = await sb.from('content').select('*');
+  const { data, error } = await sb.from('archcoder_content').select('*');
   if (!error && data && data.length) {
     window._savedContent = {};
     data.forEach(row => { window._savedContent[row.id] = row.html; });

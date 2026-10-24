@@ -6,6 +6,7 @@
 <title>Urban AI Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;600;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://appofapp-gh.vercel.app/ai-menu.js" data-auto></script>
 <style>
 :root {
   --bx: #630d16;
@@ -859,47 +860,6 @@ body {
     </button>
   </div>
 
-  <div style="padding:0.6rem 1rem 0.4rem;">
-    <button id="save-btn" onclick="saveAll()" style="
-      width:100%;
-      background:var(--bx);
-      color:#fff;
-      border:none;
-      border-radius:5px;
-      padding:0.55rem 0;
-      font-family:'Assistant',sans-serif;
-      font-size:0.72rem;
-      font-weight:800;
-      letter-spacing:2px;
-      text-transform:uppercase;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-      transition:background 0.18s, transform 0.1s;
-    ">
-      <span id="save-icon">💾</span>
-      <span id="save-label">שמור</span>
-    </button>
-  </div>
-  <div class="nav-tools">
-    <button class="tool-btn" id="btn-edit" onclick="toggleEdit()">
-      ✎<span class="tool-tip">עריכת תוכן</span>
-    </button>
-    <button class="tool-btn" id="btn-draw" onclick="toggleDraw()">
-      ✏<span class="tool-tip">שרטוט</span>
-    </button>
-    <button class="tool-btn" onclick="clearCanvas()">
-      ⊘<span class="tool-tip">נקה שרטוט</span>
-    </button>
-    <button class="tool-btn" onclick="openNotes()">
-      📝<span class="tool-tip">הערות</span>
-    </button>
-    <button class="tool-btn" onclick="openLinks()">
-      🔗<span class="tool-tip">קישורים</span>
-    </button>
-  </div>
 </aside>
 <div class="resize-handle" id="rh-1"></div>
 
@@ -1468,7 +1428,7 @@ window.addEventListener('resize', resize); resize();
 function toggleDraw() {
   drawMode = !drawMode;
   canvas.classList.toggle('active', drawMode);
-  document.getElementById('btn-draw').classList.toggle('active', drawMode);
+  setAiMenu();
 }
 function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 function pos(e) { return e.touches ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : {x:e.clientX,y:e.clientY}; }
@@ -1483,7 +1443,7 @@ canvas.addEventListener('touchend', ()=>drawing=false);
 let editMode = false;
 function toggleEdit() {
   editMode = !editMode;
-  document.getElementById('btn-edit').classList.toggle('active', editMode);
+  setAiMenu();
   document.querySelectorAll('[contenteditable]').forEach(el => el.classList.toggle('edit-on', editMode));
 }
 
@@ -1640,18 +1600,8 @@ function applyContent() {
 function saveAll() {
   saveContent();
   savePanelWidths();
-  /* אנימציית כפתור */
-  const btn   = document.getElementById('save-btn');
-  const label = document.getElementById('save-label');
-  const icon  = document.getElementById('save-icon');
-  btn.style.background = '#16a34a';
-  label.textContent = 'נשמר ✓';
-  icon.textContent  = '✓';
-  setTimeout(() => {
-    btn.style.background = '';
-    label.textContent = 'שמור';
-    icon.textContent  = '💾';
-  }, 1800);
+  const menu = document.querySelector('ai-menu');
+  if (menu) { menu.status = 'נשמר'; setTimeout(() => { menu.status = ''; }, 1800); }
   showToast('כל השינויים נשמרו ✓');
 }
 
@@ -1669,6 +1619,21 @@ function loadPanelWidths() {
     if (d.ctx) ctxPaneEl.style.width = d.ctx + 'px';
   } catch(e) {}
 }
+
+/* ══════════ כפתור הלוגו A&I: שמירה, עריכה, שרטוט, הערות וקישורים ══════════ */
+function setAiMenu() {
+  const menu = document.querySelector('ai-menu');
+  if (!menu) return;
+  menu.items = [
+    { label: 'שמירה', onSelect: saveAll },
+    { label: 'עריכת תוכן', pressed: editMode, onSelect: toggleEdit },
+    { label: 'שרטוט', pressed: drawMode, onSelect: toggleDraw },
+    { label: 'ניקוי שרטוט', onSelect: clearCanvas },
+    { label: 'הערות', onSelect: openNotes },
+    { label: 'קישורים', onSelect: openLinks },
+  ];
+}
+if (document.readyState === 'loading') addEventListener('DOMContentLoaded', setAiMenu); else setAiMenu();
 
 /* ══════════ אתחול ══════════ */
 loadChecklist();
